@@ -10,11 +10,11 @@ typedef struct Stack {   //store the infix
     char* array;
 }STACK;
 
-typedef struct Equate{   //evaluate the postfix
+typedef struct calculate{   //evaluate the postfix
     int top;
     int capacity;
     float *array;
-}EQUATE;
+}CALCULATE;
 
 typedef struct Output{  //store the postfix(linked list)
     char op;
@@ -30,9 +30,9 @@ STACK* createStack(int capacity)
     stack->array = (char*)malloc(stack->capacity * sizeof(char));
     return stack;
 }
-EQUATE* createCalculateStack(int capacity)
+CALCULATE* createCalculateStack(int capacity)
 {
-    EQUATE* stack = (EQUATE*)malloc(sizeof(EQUATE));
+    CALCULATE* stack = (CALCULATE*)malloc(sizeof(CALCULATE));
     stack->capacity = capacity;
     stack->top = -1;
     stack->array = (float*)malloc(stack->capacity * sizeof(float));
@@ -78,27 +78,26 @@ void push(STACK* stack,char value){
 void pop(STACK* stack){
     stack->top--;
 }
-int isEmpty(STACK* stack){
-    return stack->top == -1;
-}
 char Top(STACK* stack){
     return stack->array[stack->top];
 }
-
-float TopCalc(EQUATE* stack){
+int isEmpty(STACK* stack){
+    return stack->top == -1;
+}
+float TopCalc(CALCULATE* stack){
     return stack->array[stack->top];
 }
-void pushCalc(EQUATE* stack,float value){
+void pushCalc(CALCULATE* stack,float value){
     if(stack->top == stack->capacity - 1){
         return;
     }
     stack->top++;
     stack->array[stack->top] = value;
 }
-void popCalc(EQUATE* stack){
+void popCalc(CALCULATE* stack){
     stack->top--;
 }
-void evaluate(EQUATE* calcstack,OUTPUT** head_ref){
+void evaluate(CALCULATE* calcstack,OUTPUT** head_ref){
     OUTPUT *ptr = *head_ref;
     while(ptr!=NULL){
         if(ptr->op=='0'){
@@ -112,18 +111,7 @@ void evaluate(EQUATE* calcstack,OUTPUT** head_ref){
                 float b=TopCalc(calcstack);
                 popCalc(calcstack);
                 float sum;
-                if(oper=='+')
-                    sum = a + b;
-                else if(oper=='-')
-                    sum = a - b;
-                else if(oper=='*')
-                    sum = a *b;
-                else if (oper == '/')
-                    sum = a / b;
-                else if(oper=='<')
-                    sum = (int)a << (int)b;
-                else
-                    sum = (int)a >> (int)b;
+                sum=(oper=='+')?(a+b):((oper=='-')?(b-a):((oper=='*')?(a*b):((oper=='/')?(b/a):((oper=='<')?((int)b<<(int)a):((int)b>>(int)a)))));
                 pushCalc(calcstack, sum);
             }
             else{
@@ -136,24 +124,34 @@ void evaluate(EQUATE* calcstack,OUTPUT** head_ref){
         }
         ptr = ptr->next;
     }
-    printf("%f",TopCalc(calcstack));
+    printf("%.3f",TopCalc(calcstack));
 }
 
 int main(){
     char arr[101];
     fgets(arr, 101, stdin); //get the input
-
-    STACK* stack = createStack(strlen(arr));  //stack to store operators while making the postfix
-    EQUATE *calcstack = createCalculateStack(101); //stack used for evaluation of postfix
     OUTPUT *head1 = NULL;
-    char storenum[5];//to store more than one digit numbers
-    int storenumcounter = 0;
 
+    char storenum[4];//to store more than one digit numbers
+    int storenumcounter = 0;
+    STACK* stack = createStack(strlen(arr));  //stack to store operators while making the postfix
+    CALCULATE *calcstack = createCalculateStack(101); //stack used for evaluation of postfix
+    int flag = 0; //to check if valid expression or not
+
+    for (int i = 0; i < strlen(arr);i++){ //to check if its a valid expression with equal opeing and closing brackets
+        if(arr[i]=='(')
+            flag++;
+        else if(arr[i]==')')
+            flag--;
+    }
+    if(getPre(arr[0])!=4 && getPre(arr[0])!=0) //check if the expression doesn't start with an operator
+        flag = 1;
+    if(flag==0){
         for (int i = 0; i < strlen(arr); i++)
         {
-            if (arr[i]-'0'>=0)
+            if (isdigit(arr[i]))
             {
-                while (arr[i]-'0'>=0)
+                while (isdigit(arr[i]))
                 {
                     printf("%c", arr[i]);
                     storenum[storenumcounter] = arr[i];
@@ -163,7 +161,7 @@ int main(){
                 storenum[storenumcounter] = '\0';
                 append(&head1, '0', atoi(storenum));
                 storenumcounter = 0;
-                for (int j = 0; j < 5;j++){
+                for (int j = 0; j < 4;j++){
                     storenum[j] = '0';
                 }
                     printf(",");
@@ -172,8 +170,8 @@ int main(){
             else{
             if(arr[i]=='<'||arr[i]=='>')
                 i++;
-            int precedence = getPre(arr[i]);
-            if(precedence==4){
+            int level = getPre(arr[i]);
+            if(level==4){
                 if(arr[i]=='(')
                     push(stack, '(');
                 else{
@@ -190,14 +188,14 @@ int main(){
                     pop(stack);
                 }
             }
-            else if(precedence==3||precedence==2||precedence==1)
+            else if(level==3||level==2||level==1)
             {
-                int stopprecedence = getPre(Top(stack));
-                if(precedence>stopprecedence|| Top(stack)=='('){
+                int stoplevel = getPre(Top(stack));
+                if(level>stoplevel|| Top(stack)=='('){
                     push(stack, arr[i]);
                 }
                 else{
-                    while(getPre(Top(stack))>=precedence && !isEmpty(stack)){
+                    while(getPre(Top(stack))>=level && !isEmpty(stack)){
                         if(Top(stack)!='('){
                             if(Top(stack)!='<'&& Top(stack)!='>'){
                                 printf("%c,", (Top(stack)));
@@ -208,6 +206,7 @@ int main(){
                             append(&head1, Top(stack), 0);
                             pop(stack);
                         }   
+                        else break;
                     }
                     push(stack, arr[i]);
                 }
@@ -227,6 +226,9 @@ int main(){
     }
     printf("\n");
     evaluate(calcstack, &head1);
-
+    }
+    else{
+        printf("not a valid expression");
+    }
     return 0;
 }
